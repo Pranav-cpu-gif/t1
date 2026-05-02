@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>BizzTrak – Business Management</title>
+    <meta name="description" content="All‑in‑one business management for SMEs">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/svg+xml" href="logo.svg">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- LIBRARIES (CDNs) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loader">
+            <div class="bizztrak-logo"><img src="logo.svg" alt="Logo" class="logo-icon" style="width: 48px; height: 48px; vertical-align: middle; margin-right: 10px;"><span>BizzTrak</span></div>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-container">
+            <div class="logo-header">
+                <div class="logo"><img src="logo.svg" alt="Logo" class="logo-icon" style="width: 40px; height: 40px;"><h1>Bizz<span class="trak">Trak</span></h1></div>
+                <p class="tagline">Your business, simplified.</p>
+            </div>
+            <!-- Login Form -->
+            <div class="auth-form" id="login-form">
+                <h2>Welcome Back</h2>
+                <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="login-email" placeholder="Email Address" required></div>
+                <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="login-password" placeholder="Password" required></div>
+                <button class="btn-primary" onclick="login()">Login</button>
+                <p class="auth-switch">Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
+                <p class="auth-switch"><a href="#" onclick="showForgotPassword()">Forgot Password?</a></p>
+            </div>
+            <!-- Register Form -->
+            <div class="auth-form" id="register-form" style="display:none;">
+                <h2>Create Account</h2>
+                <div class="input-group"><i class="fas fa-user"></i><input type="text" id="register-name" placeholder="Business Name" required></div>
+                <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="register-email" placeholder="Email Address" required></div>
+                <div class="input-group"><i class="fas fa-phone"></i><input type="tel" id="register-phone" placeholder="Phone Number" required></div>
+                <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="register-password" placeholder="Password (min. 8 characters)" required></div>
+                <div class="input-group"><i class="fas fa-lock"></i><input type="password" id="register-confirm" placeholder="Confirm Password" required></div>
+                <div class="input-group">
+                    <i class="fas fa-store"></i>
+                    <select id="business-type">
+                        <option value="">Select Business Type</option>
+                        <option value="retail">Retail Shop</option>
+                        <option value="hardware">Hardware Store</option>
+                        <option value="barber">Barber Shop</option>
+                        <option value="printing">Printing Shop</option>
+                        <option value="petrol">Petrol Station</option>
+                        <option value="magasin">Ti magasin</option>
+                        <option value="pooja">Pooja shop</option>
+                        <option value="other">Other Business</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="register()">Create Account</button>
+                <p class="auth-switch">Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+            </div>
+            <!-- Forgot Password Form -->
+            <div class="auth-form" id="forgot-form" style="display:none;">
+                <h2>Reset Password</h2>
+                <div class="input-group"><i class="fas fa-envelope"></i><input type="email" id="reset-email" placeholder="Enter your email" required></div>
+                <button class="btn-primary" onclick="resetPassword()">Send Reset Link</button>
+                <p class="auth-switch"><a href="#" onclick="showLogin()">Back to Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app-container" class="app-container" style="display:none;">
+        <header class="app-header">
+            <div class="header-left">
+                <button class="menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <div class="app-logo"><img src="logo.svg" alt="Logo" class="logo-icon" style="width: 28px; height: 28px;"><span class="app-name">BizzTrak</span><span class="plan-badge" id="plan-badge">Free Trial</span></div>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <span id="user-business-name">Business Name</span>
+                    <button class="btn-icon dark-mode-toggle" id="dark-mode-toggle-header" onclick="toggleDarkMode()"><i id="dark-mode-icon-header" class="fas fa-moon"></i></button>
+                    <button class="btn-icon" onclick="toggleNotifications()"><i class="fas fa-bell"></i><span class="notification-count" id="notification-count">0</span></button>
+                    <button class="btn-icon" onclick="logout()"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <div id="notifications-panel" class="notifications-panel" style="display:none;">
+            <div class="notifications-header"><h3>Notifications</h3><button class="btn-icon" onclick="toggleNotifications()"><i class="fas fa-times"></i></button></div>
+            <div class="notifications-list" id="notifications-list"></div>
+        </div>
+
+        <nav id="sidebar" class="sidebar">
+            <div class="sidebar-user">
+                <div class="user-avatar"><i class="fas fa-store"></i></div>
+                <div class="user-details">
+                    <h4 id="sidebar-business-name">Business Name</h4>
+                    <p id="sidebar-business-type">Business Type</p>
+                    <p class="subscription-info"><span id="subscription-status">Free Trial</span><span id="trial-days">(14 days left)</span></p>
+                </div>
+            </div>
+            <ul class="sidebar-menu">
+                <li class="active" onclick="showDashboard()"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></li>
+                <li onclick="showCRM()"><i class="fas fa-users"></i><span>CRM</span></li>
+                <li onclick="showSales()"><i class="fas fa-shopping-cart"></i><span>Sales</span></li>
+                <li onclick="showExpenses()"><i class="fas fa-money-bill-wave"></i><span>Expenses</span></li>
+                <li onclick="showInventory()"><i class="fas fa-boxes"></i><span>Inventory</span></li>
+                <li onclick="showDeliveries()"><i class="fas fa-truck"></i><span>Pending Delivery</span></li>
+                <li onclick="showWhatsApp()"><i class="fab fa-whatsapp"></i><span>WhatsApp</span></li>
+                <li onclick="showReceipts()"><i class="fas fa-receipt"></i><span>Receipts</span></li>
+                <li onclick="showPrinter()"><i class="fas fa-print"></i><span>Print Settings</span></li>
+                <li onclick="showAI()"><i class="fas fa-robot"></i><span>BizzTrak AI</span></li>
+                <li onclick="showSettings()"><i class="fas fa-cog"></i><span>Settings</span></li>
+                <li onclick="showSubscription()"><i class="fas fa-crown"></i><span>Upgrade Plan</span></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button id="install-app-btn" class="btn-primary btn-block" style="display:none; margin-bottom: 1rem;" onclick="installPWA()"><i class="fas fa-download"></i> Install App</button>
+                <button class="btn-secondary btn-block" onclick="exportAllDataJSON()"><i class="fas fa-download"></i> Export Data (JSON)</button>
+                <p class="app-version">BizzTrak v2.1</p>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Dashboard View -->
+            <div id="dashboard-view" class="content-view">
+                <div class="content-header"><h2>Dashboard</h2><div class="date-display"><i class="fas fa-calendar-alt"></i><span id="current-date">Loading...</span></div></div>
+                <div class="stats-cards">
+                    <div class="stat-card revenue"><div class="stat-icon"><i class="fas fa-rupee-sign"></i></div><div class="stat-info"><h3>Today's Revenue</h3><p class="stat-value" id="today-revenue">Rs 0</p><p class="stat-change">+0% from yesterday</p></div></div>
+                    <div class="stat-card customers"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-info"><h3>Total Customers</h3><p class="stat-value" id="total-customers">0</p><p class="stat-change">+0 this month</p></div></div>
+                    <div class="stat-card sales"><div class="stat-icon"><i class="fas fa-shopping-cart"></i></div><div class="stat-info"><h3>Today's Sales</h3><p class="stat-value" id="today-sales">0</p><p class="stat-change">+0% from yesterday</p></div></div>
+                    <div class="stat-card expenses"><div class="stat-icon"><i class="fas fa-money-bill-wave"></i></div><div class="stat-info"><h3>Today's Expenses</h3><p class="stat-value" id="today-expenses">Rs 0</p><p class="stat-change">+0% from yesterday</p></div></div>
+                </div>
+                <div class="dashboard-charts"><div class="chart-container"><h3>Revenue This Week</h3><canvas id="revenue-chart"></canvas></div><div class="chart-container"><h3>Top Selling Products</h3><canvas id="products-chart"></canvas></div></div>
+                <div class="recent-activity"><h3>Recent Activity</h3><div class="activity-list" id="activity-list"></div></div>
+            </div>
+
+            <!-- CRM View -->
+            <div id="crm-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Customer Relationship Management</h2><div><button class="btn-secondary" onclick="exportTableToCSV('customers')"><i class="fas fa-file-csv"></i> Export CSV</button><button class="btn-primary" onclick="addNewCustomer()"><i class="fas fa-plus"></i> Add Customer</button></div></div>
+                <div class="search-bar"><i class="fas fa-search"></i><input type="text" id="customer-search" placeholder="Search customers..."></div>
+                <div class="table-container"><table class="data-table" id="customers-table"><thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Total Purchases</th><th>Last Purchase</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+            </div>
+
+            <!-- Sales View -->
+            <div id="sales-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Sales Management</h2><div><button class="btn-secondary" onclick="exportTableToCSV('sales')"><i class="fas fa-file-csv"></i> Export CSV</button><button class="btn-primary" onclick="createNewSale()"><i class="fas fa-plus"></i> New Sale</button></div></div>
+                
+                <div class="sales-form" id="new-sale-form" style="display:none;">
+                    <div class="pos-layout">
+                        <!-- Left: Products -->
+                        <div class="pos-products">
+                            <div class="pos-toolbar">
+                                <div class="search-box">
+                                    <i class="fas fa-search"></i>
+                                    <input type="text" id="product-grid-search" placeholder="Search products..." onkeyup="loadProductGrid()">
+                                </div>
+                                <select id="product-category-filter" onchange="loadProductGrid()"><option value="">All Categories</option></select>
+                                <button class="btn-primary btn-sm" onclick="openAddProductModal()"><i class="fas fa-plus"></i> New</button>
+                            </div>
+                            <div id="product-grid" class="product-grid"></div>
+                            
+                            <!-- Quick add item wrapper -->
+                            <div class="quick-add-panel">
+                                <h4><i class="fas fa-bolt"></i> Quick Item (Not in inventory)</h4>
+                                <div class="quick-add-inputs">
+                                    <input type="text" id="quick-item-name" placeholder="Item name">
+                                    <input type="number" id="quick-item-price" placeholder="Price" step="0.01">
+                                    <input type="number" id="quick-item-qty" placeholder="Qty" value="1" min="1">
+                                    <button class="btn-secondary" onclick="quickAddSaleItem()"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Right: Cart -->
+                        <div class="pos-cart">
+                            <div class="cart-header">
+                                <h3>Current Order</h3>
+                                <input type="date" id="sale-date" class="date-input-sm">
+                            </div>
+                            
+                            <div class="customer-selection">
+                                <select id="sale-customer"><option value="">Walk-in Customer</option></select>
+                                <button class="btn-icon" onclick="quickAddCustomer()" title="Add Customer"><i class="fas fa-user-plus"></i></button>
+                            </div>
+                            
+                            <div class="cart-items-wrapper">
+                                <table class="items-table">
+                                    <tbody id="sale-items"></tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="cart-summary">
+                                <div class="summary-row total-row">
+                                    <span>Total</span>
+                                    <span id="sale-total">Rs 0.00</span>
+                                </div>
+                                
+                                <div class="payment-methods-compact">
+                                    <label class="radio-btn"><input type="radio" name="payment" value="cash" checked> <span>Cash</span></label>
+                                    <label class="radio-btn"><input type="radio" name="payment" value="card"> <span>Card</span></label>
+                                    <label class="radio-btn"><input type="radio" name="payment" value="bank"> <span>Bank</span></label>
+                                </div>
+                                
+                                <label class="delivery-toggle">
+                                    <input type="checkbox" id="sale-needs-delivery"> <span>Create delivery record</span>
+                                </label>
+                                
+                                <div class="cart-actions">
+                                    <button class="btn-secondary btn-block" onclick="cancelSale()">Cancel</button>
+                                    <button class="btn-primary btn-block btn-lg" onclick="saveSale()"><i class="fas fa-check-circle"></i> Complete Sale</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sales-list">
+                    <h3>Recent Sales</h3>
+                    <div class="month-selector" style="margin-bottom:1rem;">
+                        <label>Month: </label><select id="sales-month-selector" onchange="changeSalesMonth()"></select>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="sales-table">
+                            <thead><tr><th>Invoice #</th><th>Customer</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses View -->
+            <div id="expenses-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Expense Tracking</h2><div><button class="btn-secondary" onclick="exportTableToCSV('expenses')"><i class="fas fa-file-csv"></i> Export CSV</button><button class="btn-primary" onclick="addNewExpense()"><i class="fas fa-plus"></i> Add Expense</button></div></div>
+                <div class="expense-form" id="new-expense-form" style="display:none;"><h3>Add New Expense</h3><div class="form-row"><div class="form-group"><label>Category</label><select id="expense-category"><option value="rent">Rent</option><option value="utilities">Utilities</option><option value="salary">Salary</option><option value="inventory">Inventory</option><option value="marketing">Marketing</option><option value="other">Other</option></select></div><div class="form-group"><label>Amount (Rs)</label><input type="number" id="expense-amount" step="0.01"></div></div><div class="form-group"><label>Description</label><textarea id="expense-description" rows="2"></textarea></div><div class="form-row"><div class="form-group"><label>Date</label><input type="date" id="expense-date"></div></div><div class="form-actions"><button class="btn-secondary" onclick="cancelExpense()">Cancel</button><button class="btn-primary" onclick="saveExpense()">Save Expense</button></div></div>
+                <div class="expenses-summary"><div class="summary-card"><h3>This Month</h3><p class="summary-amount" id="month-expenses">Rs 0</p></div><div class="summary-card"><h3>By Category</h3><canvas id="expenses-chart"></canvas></div></div>
+                <div class="table-container"><table class="data-table" id="expenses-table"><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+            </div>
+
+            <!-- Inventory View -->
+            <div id="inventory-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Inventory Management</h2><div><button class="btn-secondary" onclick="exportTableToCSV('inventory')"><i class="fas fa-file-csv"></i> Export CSV</button><button class="btn-primary" onclick="addInventoryItem()"><i class="fas fa-plus"></i> Add Item</button></div></div>
+                <div class="inventory-stats"><div class="inventory-stat"><h4>Total Items</h4><p id="total-items">0</p></div><div class="inventory-stat"><h4>Low Stock</h4><p id="low-stock">0</p></div><div class="inventory-stat"><h4>Out of Stock</h4><p id="out-of-stock">0</p></div><div class="inventory-stat"><h4>Total Value</h4><p id="inventory-value">Rs 0</p></div></div>
+                <div class="table-container"><table class="data-table" id="inventory-table"><thead><tr><th>Image</th><th>Product</th><th>SKU</th><th>Category</th><th>Stock</th><th>Price</th><th>Value</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+            </div>
+
+            <!-- Deliveries View -->
+            <div id="deliveries-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>📦 Pending Deliveries</h2><div><button class="btn-primary" onclick="openAddDeliveryModal()"><i class="fas fa-plus"></i> Add Delivery</button></div></div>
+                <div class="table-container"><table class="data-table" id="deliveries-table"><thead><tr><th>Customer</th><th>Items</th><th>Delivery Date</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead><tbody></tbody></table></div>
+            </div>
+
+            <!-- AI View -->
+            <div id="ai-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>BizzTrak AI Agent</h2></div>
+                <div class="ai-container" style="background: var(--bg-white); padding: 2rem; border-radius: 8px; min-height: 400px; display: flex; flex-direction: column; box-shadow: var(--shadow);">
+                    <div id="ai-chat-box" style="flex: 1; overflow-y: auto; border: 1px solid var(--border); padding: 1rem; margin-bottom: 1rem; border-radius: 4px;">
+                        <div style="margin-bottom: 1rem;"><strong>AI Agent:</strong> Hello! Ask me about your business. (e.g. "How was my profit?")</div>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <input type="text" id="ai-input" placeholder="Ask AI a question..." style="flex: 1; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-light); color: var(--text-dark);">
+                        <button class="btn-primary" onclick="askAI()" style="width: auto;">Ask</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WhatsApp View -->
+            <div id="whatsapp-view" class="content-view" style="display:none;"><div class="content-header"><h2>WhatsApp Integration</h2><button class="btn-success" onclick="openWhatsAppWeb()"><i class="fab fa-whatsapp"></i> Launch WhatsApp Web</button></div><p>Click the button to open WhatsApp Web in a new window.</p></div>
+
+            <!-- Receipts View -->
+            <div id="receipts-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Receipt Customization</h2><button class="btn-primary" onclick="customizeReceipt()"><i class="fas fa-paint-brush"></i> Customize Receipt</button></div>
+                <div class="receipt-preview-container">
+                    <div class="receipt-customization">
+                        <h3>Receipt Design</h3>
+                        <div class="option-group"><label>Business Name</label><input type="text" id="receipt-business-name" placeholder="Your Business Name"></div>
+                        <div class="option-group"><label>Address</label><input type="text" id="receipt-address" placeholder="Business Address"></div>
+                        <div class="option-group"><label>Phone</label><input type="text" id="receipt-phone" placeholder="Phone Number"></div>
+                        <div class="option-group"><label>Logo</label><input type="file" id="receipt-logo" accept="image/*"></div>
+                        <div class="option-group"><label>Footer Message</label><textarea id="receipt-footer">Thank you for your business!</textarea></div>
+                        <button class="btn-primary" onclick="updateReceiptDesign()">Update Design</button>
+                    </div>
+                    <div class="receipt-preview">
+                        <h3>Preview</h3>
+                        <div class="receipt" id="receipt-template">
+                            <div class="receipt-header"><h2 id="preview-business-name">Business Name</h2><p id="preview-address">Address Line</p><p id="preview-phone">Phone: 123-456-7890</p></div>
+                            <div class="receipt-body"><div class="receipt-item"><span>Item 1</span><span>Rs 100</span></div><div class="receipt-item"><span>Item 2</span><span>Rs 200</span></div></div>
+                            <div class="receipt-footer"><p><strong>Total: Rs 300</strong></p><p id="preview-footer">Thank you for your business!</p></div>
+                        </div>
+                        <div class="receipt-actions"><button class="btn-secondary" onclick="printReceipt()"><i class="fas fa-print"></i> Print Test</button><button class="btn-success" onclick="sendTestReceipt()"><i class="fab fa-whatsapp"></i> Send Test</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Printer Settings -->
+            <div id="printer-view" class="content-view" style="display:none;"><div class="content-header"><h2>Printer Configuration</h2></div><div class="printer-config"><div class="config-section"><h3>Connect Printer</h3><div class="printer-options"><button class="btn-primary" onclick="connectBluetoothPrinter()"><i class="fas fa-bluetooth"></i> Bluetooth</button><button class="btn-primary" onclick="connectUSBPrinter()"><i class="fas fa-usb"></i> USB</button><button class="btn-primary" onclick="connectNetworkPrinter()"><i class="fas fa-wifi"></i> Network</button></div></div><div class="config-section"><h3>Settings</h3><div class="form-group"><label>Paper Size</label><select id="paper-size"><option value="80mm">80mm (Receipt)</option><option value="A4">A4</option><option value="A5">A5</option></select></div><div class="form-group"><label>Print Copies</label><input type="number" id="print-copies" value="1" min="1" max="5"></div><div class="form-group"><label><input type="checkbox" id="auto-print" checked> Auto‑print after sale</label></div><button class="btn-primary" onclick="savePrinterSettings()">Save Settings</button></div></div></div>
+
+            <!-- Subscription View -->
+            <div id="subscription-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Upgrade Your Plan</h2></div>
+                <div class="pricing-plans">
+                    <div class="plan-card"><div class="plan-header basic"><h3>Basic</h3><div class="plan-price"><span class="price">Rs 199</span><span class="period">/month</span></div></div><div class="plan-features"><ul><li><i class="fas fa-check"></i> Up to 100 customers</li><li><i class="fas fa-check"></i> 500 sales/month</li><li><i class="fas fa-check"></i> Basic reporting</li><li><i class="fas fa-check"></i> Email support</li><li><i class="fas fa-times"></i> WhatsApp integration</li></ul></div><button class="btn-primary" onclick="selectPlan('basic')">Select Basic</button></div>
+                    <div class="plan-card popular"><div class="plan-badge">Most Popular</div><div class="plan-header pro"><h3>Pro</h3><div class="plan-price"><span class="price">Rs 499</span><span class="period">/month</span></div></div><div class="plan-features"><ul><li><i class="fas fa-check"></i> Unlimited customers</li><li><i class="fas fa-check"></i> Unlimited sales</li><li><i class="fas fa-check"></i> Advanced reporting</li><li><i class="fas fa-check"></i> Priority support</li><li><i class="fas fa-check"></i> WhatsApp integration</li></ul></div><button class="btn-primary" onclick="selectPlan('pro')">Select Pro</button></div>
+                    <div class="plan-card"><div class="plan-header mega"><h3>Mega Pro</h3><div class="plan-price"><span class="price">Rs 999</span><span class="period">/month</span></div></div><div class="plan-features"><ul><li><i class="fas fa-check"></i> Everything in Pro</li><li><i class="fas fa-check"></i> Multiple locations</li><li><i class="fas fa-check"></i> Team accounts (up to 5)</li><li><i class="fas fa-check"></i> API access</li></ul></div><button class="btn-primary" onclick="selectPlan('mega')">Select Mega Pro</button></div>
+                </div>
+                <div class="current-plan"><h3>Your Current Plan</h3><div class="plan-info"><span id="current-plan-name">Free Trial</span><span id="plan-expiry">Expires in 14 days</span><button class="btn-secondary" onclick="cancelSubscription()">Cancel Subscription</button></div></div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settings-view" class="content-view" style="display:none;">
+                <div class="content-header"><h2>Settings</h2></div>
+                <div class="settings-container">
+                    <div class="settings-section"><h3>Business Information</h3><div class="form-group"><label>Business Name</label><input type="text" id="settings-business-name"></div><div class="form-group"><label>Business Type</label><select id="settings-business-type"><option value="retail">Retail Shop</option><option value="hardware">Hardware Store</option><option value="barber">Barber Shop</option><option value="printing">Printing Shop</option><option value="petrol">Petrol Station</option><option value="other">Other</option></select></div><div class="form-group"><label>Currency</label><select id="settings-currency"><option value="MUR">Mauritian Rupee (Rs)</option><option value="USD">US Dollar ($)</option><option value="EUR">Euro (€)</option></select></div></div>
+                    <div class="settings-section"><h3>Security</h3><div class="form-group"><label>New Password</label><input type="password" id="new-password" placeholder="New password"></div><div class="form-group"><label>Confirm Password</label><input type="password" id="confirm-password" placeholder="Confirm new password"></div><button class="btn-primary" onclick="changePassword()">Update Password</button></div>
+                    <div class="settings-section"><h3>Data Management</h3><div class="data-actions"><button class="btn-secondary" onclick="exportAllDataJSON()"><i class="fas fa-download"></i> Export All Data (JSON)</button><button class="btn-danger" onclick="deleteAccount()"><i class="fas fa-trash"></i> Delete Account</button></div></div>
+                    <div class="settings-section">
+                        <h3>Cloud Security & AI Setup</h3>
+                        <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 1rem;">Configure Firebase (Free Database) and Gemini AI.</p>
+                        <div class="form-group"><label>Firebase API Key</label><input type="text" id="fb-apiKey"></div>
+                        <div class="form-group"><label>Firebase Auth Domain</label><input type="text" id="fb-authDomain"></div>
+                        <div class="form-group"><label>Firebase Project ID</label><input type="text" id="fb-projectId"></div>
+                        <div class="form-group"><label>Gemini AI Key</label><input type="text" id="gemini-apiKey"></div>
+                        <button class="btn-primary" onclick="saveCloudSettings()">Save Cloud Settings</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div id="toast-container" class="toast-container"></div>
+
+        <!-- Modals -->
+        <div id="payment-modal" class="modal" style="display:none;"><div class="modal-content"><div class="modal-header"><h3>Complete Your Subscription</h3><button class="btn-icon" onclick="closeModal()"><i class="fas fa-times"></i></button></div><div class="modal-body"><div class="payment-details"><h4 id="selected-plan-name">Pro Plan</h4><p id="selected-plan-price">Rs 499/month</p></div><div class="payment-methods"><h4>Select Payment Method</h4><label><input type="radio" name="payment-method" value="cc" checked> Credit/Debit Card</label><label><input type="radio" name="payment-method" value="bank"> Bank Transfer</label><label><input type="radio" name="payment-method" value="mobile"> Mobile Payment</label></div><div id="card-details"><div class="form-group"><label>Card Number</label><input type="text" placeholder="1234 5678 9012 3456"></div><div class="form-row"><div class="form-group"><label>Expiry</label><input type="text" placeholder="MM/YY"></div><div class="form-group"><label>CVV</label><input type="text" placeholder="123"></div></div></div></div><div class="modal-footer"><button class="btn-secondary" onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="processPayment()">Pay Now</button></div></div></div>
+
+        <div id="receipt-options-modal" class="modal" style="display:none;"><div class="modal-content" style="max-width:400px;"><div class="modal-header"><h3>Receipt Options</h3><button class="btn-icon" onclick="closeReceiptOptionsModal()"><i class="fas fa-times"></i></button></div><div class="modal-body" style="text-align:center;"><p>What would you like to do with the receipt?</p><div style="display:flex; gap:20px; justify-content:center; margin-top:20px;"><button class="btn-primary" onclick="printReceiptForSale(currentSaleId)">Print Receipt</button><button class="btn-success" onclick="sendReceiptViaWhatsApp(currentSaleId)">Send via WhatsApp</button></div></div></div></div>
+
+        <div id="add-product-modal" class="modal" style="display:none;"><div class="modal-content" style="max-width:500px;"><div class="modal-header"><h3>Add New Product</h3><button class="btn-icon" onclick="closeAddProductModal()"><i class="fas fa-times"></i></button></div><div class="modal-body"><form id="add-product-form"><div class="form-group"><label>Product Name *</label><input type="text" id="new-product-name" required></div><div class="form-group"><label>Price (Rs) *</label><input type="number" id="new-product-price" step="0.01" required></div><div class="form-group"><label>Category</label><input type="text" id="new-product-category" placeholder="e.g. Electronics"></div><div class="form-group"><label>Initial Stock</label><input type="number" id="new-product-stock" value="0" min="0"></div><div class="form-group"><label>Product Image</label><input type="file" id="new-product-image" accept="image/*" capture="environment"><div id="image-preview" style="margin-top:10px; max-width:100px;"></div></div><div class="form-group"><label>SKU (optional)</label><input type="text" id="new-product-sku" placeholder="Auto-generated if empty"></div></form></div><div class="modal-footer"><button class="btn-secondary" onclick="closeAddProductModal()">Cancel</button><button class="btn-primary" onclick="saveNewProduct()">Save Product</button></div></div></div>
+
+        <div id="add-delivery-modal" class="modal" style="display:none;"><div class="modal-content" style="max-width:600px;"><div class="modal-header"><h3>Add New Delivery</h3><button class="btn-icon" onclick="closeAddDeliveryModal()"><i class="fas fa-times"></i></button></div><div class="modal-body"><div class="form-group"><label>Customer *</label><select id="delivery-customer"></select><button class="btn-secondary" style="margin-top:0.5rem;" onclick="quickAddCustomerForDelivery()">+ Quick Add Customer</button></div><div class="form-group"><label>Items (product & quantity)</label><div id="delivery-items-container"><div class="delivery-item-row" style="display:flex; gap:0.5rem; margin-bottom:0.5rem;"><input type="text" placeholder="Product name" class="delivery-item-name" style="flex:2;"><input type="number" placeholder="Qty" class="delivery-item-qty" value="1" min="1" style="flex:1;"><button type="button" class="btn-icon" onclick="removeDeliveryItem(this)"><i class="fas fa-trash"></i></button></div></div><button class="btn-secondary" onclick="addDeliveryItemRow()">+ Add another item</button></div><div class="form-group"><label>Delivery Date *</label><input type="date" id="delivery-date"></div><div class="form-group"><label>Notes (optional)</label><textarea id="delivery-notes" rows="2"></textarea></div></div><div class="modal-footer"><button class="btn-secondary" onclick="closeAddDeliveryModal()">Cancel</button><button class="btn-primary" onclick="saveNewDelivery()">Save Delivery</button></div></div></div>
+        
+        <!-- Hidden Barcode SVG -->
+        <div style="display:none;"><svg id="barcode-canvas"></svg></div>
+    </div>
+
+    <button id="back-to-top" class="btn-icon" style="position:fixed; bottom:20px; right:20px; display:none; background:var(--primary); color:white; box-shadow:var(--shadow-lg); z-index:1000;" onclick="window.scrollTo({top:0, behavior:'smooth'})"><i class="fas fa-chevron-up"></i></button>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
